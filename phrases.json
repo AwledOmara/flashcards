@@ -1,0 +1,13 @@
+[
+    { "front": "I would appreciate it if you could send me the report by tomorrow.", "back": "J'apprécierais que vous puissiez m'envoyer le rapport d'ici demain.", "default": true },
+    { "front": "Despite the challenges, we managed to complete the project on time.", "back": "Malgré les défis, nous avons réussi à terminer le projet à temps.", "default": true },
+    { "front": "Could you please clarify your last statement?", "back": "Pourriez-vous clarifier votre dernière déclaration ?", "default": true },
+    { "front": "She was thrilled to receive the award for her outstanding performance.", "back": "Elle était ravie de recevoir le prix pour sa performance exceptionnelle.", "default": true },
+    { "front": "The meeting has been postponed until further notice.", "back": "La réunion a été reportée jusqu'à nouvel ordre.", "default": true },
+    { "front": "It is essential to follow the guidelines to ensure safety.", "back": "Il est essentiel de suivre les directives pour assurer la sécurité.", "default": true },
+    { "front": "The new policy will have significant implications for all employees.", "back": "La nouvelle politique aura des implications importantes pour tous les employés.", "default": true },
+    { "front": "Please let me know if you require any additional information.", "back": "Veuillez me faire savoir si vous avez besoin d'informations supplémentaires.", "default": true },
+    { "front": "He has consistently demonstrated excellent leadership skills.", "back": "Il a constamment démontré d'excellentes compétences en leadership.", "default": true },
+    { "front": "The results of the survey will be shared during the next conference.", "back": "Les résultats de l'enquête seront partagés lors de la prochaine conférence.", "default": true }
+  ]
+  
