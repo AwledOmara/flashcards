@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#4f46e5">
+<title>English Phrase Trainer</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  /* Card flip styles */
+  .card {
+    transform-style: preserve-3d;
+    transition: transform 0.6s;
+  }
+  .flipped {
+    transform: rotateY(180deg);
+  }
+  .card-side {
+    backface-visibility: hidden;
+  }
+  .card-back {
+    transform: rotateY(180deg);
+  }
+</style>
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col items-center p-4">
+
+<h1 class="text-2xl font-bold text-gray-800 mb-2">English Phrase Trainer</h1>
+<div id="score" class="text-lg mb-4 text-gray-600">Score: 0</div>
+<button id="reverseToggle" class="px-4 py-2 bg-indigo-600 text-white rounded shadow mb-4">Reverse Mode: OFF</button>
+
+<!-- Card -->
+<div class="w-full max-w-md perspective">
+  <div id="card" class="card relative w-full min-h-[150px]">
+    <!-- Front -->
+    <div id="cardFront" class="card-side absolute w-full bg-white rounded-lg shadow p-6 flex flex-col items-center justify-center">
+      <button id="flipBtn" class="absolute top-2 right-2 bg-blue-500 text-white text-sm px-2 py-1 rounded">Flip</button>
+      <div id="frontText" class="text-lg font-semibold text-center">Click "Next Card" to start</div>
+    </div>
+    <!-- Back -->
+    <div id="cardBack" class="card-side card-back absolute w-full bg-white rounded-lg shadow p-6 flex flex-col items-center justify-center">
+      <button id="flipBtnBack" class="absolute top-2 right-2 bg-blue-500 text-white text-sm px-2 py-1 rounded">Flip</button>
+      <div id="backText" class="text-lg font-semibold text-center">Translation here</div>
+    </div>
+  </div>
+</div>
+
+<!-- Answer -->
+<input type="text" id="answerBox" placeholder="Type your answer..." class="mt-4 p-2 w-full max-w-md border border-gray-300 rounded" autocomplete="off" />
+
+<!-- Controls -->
+<div class="mt-4 flex flex-wrap gap-2 justify-center">
+  <button id="nextBtn" class="px-4 py-2 bg-green-500 text-white rounded shadow">Next Card</button>
+  <button id="addBtn" class="px-4 py-2 bg-blue-500 text-white rounded shadow">Add Card</button>
+  <button id="viewBtn" class="px-4 py-2 bg-gray-500 text-white rounded shadow">View All</button>
+  <button id="resetBtn" class="px-4 py-2 bg-red-500 text-white rounded shadow">Reset</button>
+</div>
+
+<!-- Spaced repetition -->
+<div id="spacedBtns" class="mt-3 hidden flex gap-2">
+  <button id="easyBtn" class="px-4 py-2 bg-green-600 text-white rounded">Easy</button>
+  <button id="hardBtn" class="px-4 py-2 bg-orange-500 text-white rounded">Hard</button>
+</div>
+
+<!-- Card list -->
+<div id="listArea" class="hidden mt-6 w-full max-w-2xl">
+  <h2 class="text-xl font-semibold mb-3">All Phrases</h2>
+  <div class="overflow-x-auto">
+    <table class="w-full border-collapse border border-gray-300 text-sm">
+      <thead class="bg-gray-200">
+        <tr>
+          <th class="border border-gray-300 p-2">English</th>
+          <th class="border border-gray-300 p-2">Translation</th>
+          <th class="border border-gray-300 p-2">Correct</th>
+          <th class="border border-gray-300 p-2">Wrong</th>
+          <th class="border border-gray-300 p-2">Accuracy %</th>
+          <th class="border border-gray-300 p-2">Actions</th>
+        </tr>
+      </thead>
+      <tbody id="phraseTable"></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+  if ("serviceWorker" in navigator) {
+   navigator.serviceWorker.register("./service-worker.js")
+      .then(() => console.log("Service Worker Registered"));
+  }
+
+(() => {
+  let cards = JSON.parse(localStorage.getItem("cards")) || [];
+  let score = parseInt(localStorage.getItem("score")) || 0;
+  let currentIndex = -1;
+  let flipped = false;
+  let availableCards = [...cards];
+  let reverseMode = false;
+
+  const scoreEl = document.getElementById("score");
+  const cardEl = document.getElementById("card");
+  const cardFrontEl = document.getElementById("cardFront");
+  const frontTextEl = document.getElementById("frontText");
+  const backTextEl = document.getElementById("backText");
+  const answerBoxEl = document.getElementById("answerBox");
+  const spacedBtnsEl = document.getElementById("spacedBtns");
+  const listAreaEl = document.getElementById("listArea");
+  const phraseTable = document.getElementById("phraseTable");
+  const reverseToggleBtn = document.getElementById("reverseToggle");
+
+  const save = () => {
+    localStorage.setItem("cards", JSON.stringify(cards));
+    localStorage.setItem("score", score.toString());
+  };
+  const updateScore = () => scoreEl.textContent = `Score: ${score}`;
+
+  const nextCard = () => {
+    listAreaEl.classList.add("hidden");
+    spacedBtnsEl.classList.add("hidden");
+    cardEl.classList.remove("flipped");
+    flipped = false;
+    cardFrontEl.classList.remove("bg-green-100", "bg-red-100");
+
+    if (!cards.length) {
+      frontTextEl.textContent = "No cards yet. Add some!";
+      backTextEl.textContent = "";
+      return;
+    }
+
+    if (!availableCards.length) {
+      if (confirm("All cards done! Play again?")) {
+        availableCards = [...cards];
+      } else return;
+    }
+
+    const randomIndex = Math.floor(Math.random() * availableCards.length);
+    const card = availableCards[randomIndex];
+    currentIndex = cards.indexOf(card);
+    availableCards.splice(randomIndex, 1);
+
+    if (!reverseMode) {
+      frontTextEl.textContent = card.front;
+      backTextEl.textContent = card.back;
+    } else {
+      frontTextEl.textContent = card.back;
+      backTextEl.textContent = card.front;
+    }
+    answerBoxEl.value = "";
+  };
+
+  const flipCard = () => {
+    if (!cards.length || currentIndex === -1) return;
+
+    if (!flipped) {
+      const userAnswer = answerBoxEl.value.trim().toLowerCase();
+      const correctAnswer = reverseMode
+        ? cards[currentIndex].front.trim().toLowerCase()
+        : cards[currentIndex].back.trim().toLowerCase();
+
+      if (userAnswer === correctAnswer) {
+        score++;
+        cards[currentIndex].correct = (cards[currentIndex].correct || 0) + 1;
+        cardFrontEl.classList.add("bg-green-100");
+      } else {
+        cards[currentIndex].wrong = (cards[currentIndex].wrong || 0) + 1;
+        cardFrontEl.classList.add("bg-red-100");
+      }
+      save();
+      updateScore();
+      spacedBtnsEl.classList.remove("hidden");
+    }
+
+    cardEl.classList.toggle("flipped");
+    flipped = !flipped;
+  };
+
+  const markDifficulty = (level) => {
+    if (level === "hard") availableCards.push(cards[currentIndex]);
+    nextCard();
+  };
+
+  const addCard = () => {
+    const front = prompt("Enter English phrase:")?.trim();
+    if (!front) return;
+    const back = prompt("Enter translation:")?.trim();
+    if (!back) return;
+    cards.push({ front, back, correct: 0, wrong: 0 });
+    availableCards = [...cards];
+    save();
+  };
+
+  const showList = () => {
+    phraseTable.innerHTML = "";
+    cards.forEach((card, idx) => {
+      const total = (card.correct || 0) + (card.wrong || 0);
+      const accuracy = total ? Math.round((card.correct / total) * 100) + "%" : "-";
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td class="border p-2">${card.front}</td>
+        <td class="border p-2">${card.back}</td>
+        <td class="border p-2">${card.correct || 0}</td>
+        <td class="border p-2">${card.wrong || 0}</td>
+        <td class="border p-2">${accuracy}</td>
+        <td class="border p-2 flex gap-2">
+          <button class="px-2 py-1 bg-blue-500 text-white rounded" data-action="edit" data-idx="${idx}">Edit</button>
+          <button class="px-2 py-1 bg-red-500 text-white rounded" data-action="delete" data-idx="${idx}">Delete</button>
+        </td>
+      `;
+      phraseTable.appendChild(tr);
+    });
+    listAreaEl.classList.remove("hidden");
+  };
+
+  const editCard = (idx) => {
+    const front = prompt("Edit English:", cards[idx].front);
+    if (front === null) return;
+    const back = prompt("Edit translation:", cards[idx].back);
+    if (back === null) return;
+    cards[idx].front = front.trim();
+    cards[idx].back = back.trim();
+    save();
+    showList();
+  };
+
+  const deleteCard = (idx) => {
+    if (!confirm("Delete this card?")) return;
+    cards.splice(idx, 1);
+    availableCards = [...cards];
+    save();
+    showList();
+  };
+
+  const resetProgress = () => {
+    if (!confirm("Reset all progress?")) return;
+    score = 0;
+    cards.forEach(c => { c.correct = 0; c.wrong = 0; });
+    availableCards = [...cards];
+    save();
+    updateScore();
+  };
+
+  const toggleReverseMode = () => {
+    reverseMode = !reverseMode;
+    reverseToggleBtn.textContent = `Reverse Mode: ${reverseMode ? "ON" : "OFF"}`;
+    score = 0;
+    availableCards = [...cards];
+    updateScore();
+    answerBoxEl.value = "";
+    frontTextEl.textContent = 'Click "Next Card" to start';
+    backTextEl.textContent = "Translation here";
+  };
+
+  // Event listeners
+  document.getElementById("nextBtn").onclick = nextCard;
+  document.getElementById("addBtn").onclick = addCard;
+  document.getElementById("viewBtn").onclick = showList;
+  document.getElementById("resetBtn").onclick = resetProgress;
+  document.getElementById("flipBtn").onclick = flipCard;
+  document.getElementById("flipBtnBack").onclick = flipCard;
+  document.getElementById("easyBtn").onclick = () => markDifficulty("easy");
+  document.getElementById("hardBtn").onclick = () => markDifficulty("hard");
+  reverseToggleBtn.onclick = toggleReverseMode;
+
+  phraseTable.onclick = (e) => {
+    const btn = e.target;
+    if (btn.dataset.action === "edit") editCard(btn.dataset.idx);
+    if (btn.dataset.action === "delete") deleteCard(btn.dataset.idx);
+  };
+
+  answerBoxEl.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") flipCard();
+  });
+
+  updateScore();
+})();
+</script>
+</body>
+</html>
+
